@@ -22,6 +22,9 @@
             "providers": [
                 "NocturnalSm\\Approval\\Providers\\ApprovalServiceProvider"
             ]
+        },
+        "branch-alias": {
+            "master": "1.0"
         }
     }
 }
