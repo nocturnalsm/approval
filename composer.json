@@ -1,0 +1,20 @@
+{
+    "name": "nocturnalsm/approval",
+    "description": "Laravel Approval Module",
+    "type": "library",
+    "require": {
+        "illuminate/database": "~5.4"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bambang Sugiarto",
+            "email": "basugi99@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "NocturnalSm\\Approval\\": "src"
+        }        
+    }
+}
