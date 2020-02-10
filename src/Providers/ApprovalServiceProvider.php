@@ -55,7 +55,7 @@ class ApprovalServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__.'/../Config/config.php', 'approval'
         );
-        foreach (glob(module_path("Approval").'/Policies/*.php') as $filename){            
+        foreach (glob('/../Policies/*.php') as $filename){            
             $nopath = substr($filename, strrpos($filename,"/")+1);
             list($file, $ext) = explode(".", $nopath);
             $class = 'NocturnalSm\Approval\Policies' ."\\" .$file;
