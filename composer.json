@@ -16,5 +16,12 @@
         "psr-4": {
             "NocturnalSm\\Approval\\": "src"
         }        
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "NocturnalSm\\Approval\\Providers\\ApprovalServiceProvider"
+            ]
+        }
     }
 }

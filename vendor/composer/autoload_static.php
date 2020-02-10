@@ -23,6 +23,10 @@ class ComposerStaticInit956d5869917adbf1e9440190283e58b7
             'Psr\\SimpleCache\\' => 16,
             'Psr\\Container\\' => 14,
         ),
+        'N' => 
+        array (
+            'NocturnalSm\\Approval\\' => 21,
+        ),
         'I' => 
         array (
             'Illuminate\\Support\\' => 19,
@@ -60,6 +64,10 @@ class ComposerStaticInit956d5869917adbf1e9440190283e58b7
         'Psr\\Container\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/container/src',
+        ),
+        'NocturnalSm\\Approval\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src',
         ),
         'Illuminate\\Support\\' => 
         array (
