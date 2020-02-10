@@ -23,7 +23,7 @@
             ]
         },
         "branch-alias": {
-            "master": "1.0"
+            "master": "1.0-dev"
         }
     }
 }
