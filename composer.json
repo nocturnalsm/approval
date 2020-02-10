@@ -1,7 +1,6 @@
 {
     "name": "nocturnalsm/approval",
     "description": "Laravel Approval Module",
-    "type": "library",
     "require": {
         "illuminate/database": "~5.4"
     },
