@@ -19,6 +19,14 @@
     "extra": {        
         "branch-alias": {
             "master": "1.0-dev"
+        },
+        "laravel": {
+            "providers": [
+                "NocturnalSm\\Approval\\Providers\\ApprovalServiceProvider"
+            ],
+            "aliases": {
+                "Approval": "NocturnalSm\\Approval\\ApprovalFacade"
+            }
         }
     }
 }
