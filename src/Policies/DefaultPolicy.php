@@ -10,13 +10,13 @@ class DefaultPolicy implements ApprovalPolicy
     {        
         return [
             'default' => 
-                ['statusField' => 'last_state',      
-                'pendingStates' => ["new","updated","deleted"],
+                ['pendingStates' => ["new","updated","deleted"],
                 'approvals' => [
                     'create' => [
                         'pendingState' => 'new',                        
                         'approvedState' => 'active',
-                        'onRejected' => function($model){                            
+                        'afterRejected' => function($model){
+                            $model->setApprovable(false);                            
                             $model->delete();
                         }
                     ],
@@ -24,12 +24,22 @@ class DefaultPolicy implements ApprovalPolicy
                         'state' => ['active','updated'],
                         'pendingState' => 'updated', 
                         'approvedState' => 'active',
-                        'rejectedState' => 'active'
+                        'onApproved' => function($model){                            
+                            $model->applyUpdate();
+                        },
+                        'rejectedState' => 'active',
+                        'afterRejected' => function($model){
+                            $model->cancelUpdate();
+                        }
                     ],
                     'delete' => [           
                         'state' => ['active','updated'],
                         'pendingState' => 'deleted',
-                        'rejectedState' => 'active'
+                        'rejectedState' => 'active',
+                        'afterApproved' => function($model){
+                            $model->setApprovable(false);                            
+                            $model->delete();
+                        }
                     ]
                 ]
             ]

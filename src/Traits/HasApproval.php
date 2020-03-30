@@ -2,151 +2,79 @@
 
 namespace  NocturnalSm\Approval\Traits;
 
-use NocturnalSm\Approval\Entities\Approval as ApprovalDB;
-use NocturnalSm\Approval\Traits\PendingUpdate;
-use NocturnalSm\Approval\Traits\Approvable;
-use NocturnalSm\Approval\Entities\PendingUpdateScope;
+use DB;
 use Approval;
 
 trait HasApproval
 {        
-    use PendingUpdate, Approvable;
-
-    public static function bootHasApproval(): void
-    {                          
-        static::creating(function ($model) {            
-            return $model->beforeCreate();
-        });
-        static::created(function ($model) {
-            return $model->afterCreate();
-        });
-        static::updating(function ($model) {         
-            return $model->beforeUpdate();
-        });
-        static::addGlobalScope(new PendingUpdateScope);
-    }        
-    public function approvals()
+    public function approvalRequested()
     {
-        return $this->morphMany('NocturnalSm\Approval\Entities\Approval','model');
-    }    
-    public function cancelApprovals()
-    {
-        $this->approvals()->pending()->update(["status" => ApprovalDB::STATUS_CANCELLED]);
-    }        
-    protected function beforeCreate()
-    {
-        $policy = $this->getPolicy();
-        $approval = isset($policy["approvals"]["create"]) ? $policy["approvals"]["create"] : false;
-        if ($approval){
-            $enabled = isset($approval["enabled"]) ? $approval["enabled"] : true;
-            if ($enabled){
-                $statusField = $policy["statusField"];
-                $this->$statusField = $approval["pendingState"];
-            }    
-        }
+        return $this->morphMany('NocturnalSm\Approval\Entities\Approval','requester');
     }
-    protected function afterCreate()
+    public function approvalResponded()
     {
-        $policy = $this->getPolicy();
-        $approval = isset($policy["approvals"]["create"]) ? $policy["approvals"]["create"] : false;
-        if ($approval){
-            $enabled = isset($approval["enabled"]) ? $approval["enabled"] : true;
-            if ($enabled){
-                $approval = new ApprovalDB(["approval" => "create",
-                                            "user_id" => auth()->user()->id,
-                                            "status" => ApprovalDB::STATUS_PENDING]);
-                $this->approvals()->save($approval);
-                //$approvers = $app["approvers"];
-                //$approval->responses()->createMany($approvers);
-            }
-        }
-    }    
-    protected function beforeUpdate()
+        return $this->morphMany('NocturnalSm\Approval\Entities\ApprovalResponse','model');
+    }
+    public function approvalAssigned()
     {
-        $policy = $this->getPolicy();
-        $approval = isset($policy["approvals"]["update"]) ? $policy["approvals"]["update"] : false;
+        return $this->morphMany('NocturnalSm\Approval\Entities\PolicyApprover','model');
+    }
+    public function canApprove($model)
+    {
+        $approval = $model->approvals()->pending()->first();
         if ($approval){
-            $enabled = isset($approval["enabled"]) ? $approval["enabled"] : true;
-            if ($enabled){
-                $statusField = $policy["statusField"];
-                $checkState = true;
-                if (isset($approval['state'])){
-                    if (is_string($approval['state'])){
-                        $checkState = $approval['state'] == $this->$statusField;
-                    }
-                    if (is_array($approval["state"])){
-                        $checkState = in_array($this->$statusField, $approval['state']); 
+            $policy = $approval->policy_id;
+            // get approvers assigned for this model and type of approval
+            $assigned = $this->approvalAssigned()
+                             ->select("id","level")
+                             ->where("policyapproval_id", $policy)
+                             ->orderBy("level","id")
+                             ->get();
+            if ($assigned){
+                // loop each approver, if no responses have been made return true;
+                foreach($assigned as $assign){
+                    $level = $assign->level;
+                    $responses = $assign->responses()
+                                        ->where("approval_id", $approval->id);
+                    if (!$level){
+                        if ($responses->count() == 0){
+                            return true;
+                        }
+                    }    
+                    else {
+                        $level = intval($level);                        
+                        if ($level == 1){
+                            if ($responses->count() == 0){
+                                return true;
+                            }
+                        }
+                        else if ($level > 1){
+                            // check if all response for previous level has been made
+                            $prevLevel = DB::table("policy_approvers")->select("policy_approvers.id","responses.response")
+                                                        ->leftJoinSub(DB::table("approvals")->join("approval_responses","approvals.id","=","approval_responses.approval_id")
+                                                                            ->where("approvals.id", $approval->id)
+                                                                            ->select("approver_id","response"),
+                                                                    "responses",
+                                                                    function($join){
+                                                                        $join->on("responses.approver_id", "=","policy_approvers.id");               
+                                                                    })
+                                                        ->where("policyapproval_id", $policy)
+                                                        ->where("level", $level - 1)
+                                                        ->where("responses.response", NULL);
+                            return $prevLevel->count() == 0;
+                        }                        
                     }
                 }
-                if ($checkState || $this->$statusField == $approval["pendingState"]){
-                    $this->cancelApprovals();
-                    $this->pendingUpdate();      
-                    $checkState = true;
-                    if (isset($approval['state'])){
-                        if (is_string($approval['state'])){
-                            $checkState = $approval['state'] == $this->$statusField;
-                        }
-                        if (is_array($approval["state"])){
-                            $checkState = in_array($this->$statusField, $approval['state']); 
-                        }
-                    }              
-                    if ($checkState){
-                        $this->$statusField = $approval["pendingState"];
-                        $approval = new ApprovalDB(["approval" => "update",
-                                                "user_id" => auth()->user()->id,
-                                                "status" => ApprovalDB::STATUS_PENDING]);
-                        $this->approvals()->save($approval);
-                        //$approvers = $app["approvers"];
-                        //$approval->responses()->createMany($approvers);
-                    }                        
-                }
-            }
+            }   
         }
-    }         
-    public function delete()
-    {
-        $policy = $this->getPolicy();
-        $approval = isset($policy["approvals"]["delete"]) ? $policy["approvals"]["delete"] : false;
-        if ($approval != false){
-            $enabled = isset($approval["enabled"]) ? $approval["enabled"] : true;                
-            $statusField = $policy["statusField"];
-            $checkState = true;
-            if (isset($approval['state'])){
-                if (is_string($approval['state'])){
-                    $checkState = $approval['state'] == $this->$statusField;
-                }
-                if (is_array($approval["state"])){
-                    $checkState = in_array($this->$statusField, $approval['state']); 
-                }
-            }
-            if ($enabled && $checkState){                    
-                $this->cancelUpdate();
-                $this->cancelApprovals();
-                $this->$statusField = $approval["pendingState"];
-                $this->save();
-                $approval = new ApprovalDB(["approval" => "delete",
-                                            "user_id" => auth()->user()->id,
-                                            "status" => ApprovalDB::STATUS_PENDING]);
-                $this->approvals()->save($approval);
-                return true;
-            }
-        }
-        parent::delete();
+        return false;
     }
-    public function canApprove()
+    public function respondApproval($model, $status, $params = Array())
     {
-        $policy = $this->getPolicy();                
-        $pendingStates = $policy["pendingStates"];                
-        return in_array($this->last_state, $pendingStates);
-    }
-    public function approvable($approval)
-    {
-        $policy = $this->getPolicy();
-        $enabled = false;
-        $approval = isset($policy["approvals"][$approval]) ? $policy["approvals"][$approval] : false;        
-        if ($approval){
-            $enabled = isset($approval["enabled"]) ? $approval["enabled"] : true;   
+        if ($this->canApprove($model)){
+            $approval = $model->approvals()->pending()->first();
+            return Approval::respond($approval,$this,$status, $params);
         }
-        return $enabled;
-    }    
+        return false;
+    }
 }

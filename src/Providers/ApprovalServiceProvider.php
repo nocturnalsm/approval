@@ -5,6 +5,8 @@ namespace NocturnalSm\Approval\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Factory;
 use NocturnalSm\Approval\ApprovalManager;
+use Illuminate\Support\Collection;
+use Illuminate\Filesystem\Filesystem;
 
 class ApprovalServiceProvider extends ServiceProvider
 {
@@ -20,13 +22,15 @@ class ApprovalServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
+    public function boot(Filesystem $filesystem)
     {
-        $this->registerTranslations();
+        $this->publishes([
+            __DIR__.'/../Config/config.php' => config_path('approval.php'),
+        ], 'config');
+        $this->publishes([
+            __DIR__.'/../Database/Migrations/create_approval_table.php.stub' => $this->getMigrationFileName($filesystem),
+        ], 'migrations');
         $this->registerConfig();
-        $this->registerViews();
-        $this->registerFactories();
-        $this->loadMigrationsFrom(__DIR__ . '/../Database/Migrations');
     }
 
     /**
@@ -36,7 +40,6 @@ class ApprovalServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->register(RouteServiceProvider::class);
         $this->app->bind('approval',function() {
             return new \NocturnalSm\Approval\ApprovalManager;
         });        
@@ -49,76 +52,27 @@ class ApprovalServiceProvider extends ServiceProvider
      */
     protected function registerConfig()
     {
-        $this->publishes([
-            __DIR__.'/../Config/config.php' => config_path('approval.php'),
-        ], 'config');
-        $this->mergeConfigFrom(
-            __DIR__.'/../Config/config.php', 'approval'
-        );
-        foreach (glob('/../Policies/*.php') as $filename){            
+        foreach (glob(__DIR__.'/../Policies/*.php') as $filename){            
             $nopath = substr($filename, strrpos($filename,"/")+1);
             list($file, $ext) = explode(".", $nopath);
             $class = 'NocturnalSm\Approval\Policies' ."\\" .$file;
-            $config = $class::getConfig();            
-            config(["approval.policies" => array_merge($config, config('approval.policies'))]);
+            config(["approval.policies" => $class::getConfig()]);
         }        
     }
-
     /**
-     * Register views.
+     * Returns existing migration file if found, else uses the current timestamp.
      *
-     * @return void
+     * @param Filesystem $filesystem
+     * @return string
      */
-    public function registerViews()
+    protected function getMigrationFileName(Filesystem $filesystem): string
     {
-        $viewPath = resource_path('views/modules/approval');
+        $timestamp = date('Y_m_d_His');
 
-        $sourcePath = __DIR__.'/../Resources/views';
-
-        $this->publishes([
-            $sourcePath => $viewPath
-        ],'views');
-
-        $this->loadViewsFrom(array_merge(array_map(function ($path) {
-            return $path . '/modules/approval';
-        }, \Config::get('view.paths')), [$sourcePath]), 'approval');
-    }
-
-    /**
-     * Register translations.
-     *
-     * @return void
-     */
-    public function registerTranslations()
-    {
-        $langPath = resource_path('lang/modules/approval');
-
-        if (is_dir($langPath)) {
-            $this->loadTranslationsFrom($langPath, 'approval');
-        } else {
-            $this->loadTranslationsFrom(__DIR__ .'/../Resources/lang', 'approval');
-        }
-    }
-
-    /**
-     * Register an additional directory of factories.
-     * 
-     * @return void
-     */
-    public function registerFactories()
-    {
-        if (! app()->environment('production')) {
-            app(Factory::class)->load(__DIR__ . '/../Database/factories');
-        }
-    }
-
-    /**
-     * Get the services provided by the provider.
-     *
-     * @return array
-     */
-    public function provides()
-    {
-        return [];
+        return Collection::make($this->app->databasePath().DIRECTORY_SEPARATOR.'migrations'.DIRECTORY_SEPARATOR)
+            ->flatMap(function ($path) use ($filesystem) {
+                return $filesystem->glob($path.'*_create_approval_table.php');
+            })->push($this->app->databasePath()."/migrations/{$timestamp}_create_approval_table.php")
+            ->first();
     }
 }

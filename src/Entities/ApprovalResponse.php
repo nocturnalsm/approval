@@ -10,16 +10,14 @@ class ApprovalResponse extends Model
     const STATUS_APPROVE = 'approve';
     const STATUS_REJECT = 'reject';
 
-    protected $approverClass = "App\User";
-
-    public function setApproverClass($class)
-    {
-        $this->approverClass = $class;
-    }
     public function approver()
     {
-        return $this->morphOne($this->approverClass,"model");
+        return $this->morphTo("model");
     }   
+    public function approval()
+    {
+        return $this->belongsTo("NocturnalSm\Approval\Entities\Approval","approval_id");
+    }
     public static function scopePending($query)
     {
         return $query->where('status', self::STATUS_PENDING);

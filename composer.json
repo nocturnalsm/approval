@@ -1,8 +1,10 @@
 {
     "name": "nocturnalsm/approval",
     "description": "Laravel Approval Module",
+    "type": "library",
     "require": {
-        "illuminate/database": "~5.4"
+        "illuminate/database": "~5.4",
+        "nocturnalsm/pendingupdate": "~1.0"
     },
     "license": "MIT",
     "authors": [

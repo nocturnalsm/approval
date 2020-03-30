@@ -12,29 +12,37 @@ class Approval extends Model
     const STATUS_REJECTED = 'rejected';
     const STATUS_CANCELLED = 'cancelled';
 
-    protected $fillable = ['approval','user_id','status'];
+    protected $fillable = ['status'];
 
     public function responses()
     {
-        return $this->hasMany("NocturnalSm\Approval\Entities\Responses");
+        return $this->hasMany("NocturnalSm\Approval\Entities\ApprovalResponse");
+    }    
+    public function approvers()
+    {
+        return $this->hasMany("NocturnalSm\Approval\Entities\PolicyApprover","policyapproval_id","policy_id");
+    }    
+    public function model()
+    {
+        return $this->morphTo("model");
+    }
+    public function requester()
+    {
+        return $this->morphTo("requester");
     }
     public function policy()
     {
-        return $this->belongsTo("NocturnalSm\Approval\Entities\ModelHasPolicy",'policy_id');
-    }
-    public function ticketNumber()
-    {
-        return NumberGenerator::generate(get_class($this));
-    }
-    public static function scopePending($query)
+        return $this->belongsTo('NocturnalSm\Approval\Entities\PolicyApproval','policy_id','id');
+    }        
+    public function scopePending($query)
     {
         return $query->where('status', self::STATUS_PENDING);
     }
-    public static function scopeApproved($query)
+    public function scopeApproved($query)
     {
         return $query->where('status', self::STATUS_APPROVED);
     }
-    public static function scopeRejected($query)
+    public function scopeRejected($query)
     {
         return $query->where('status', self::STATUS_REJECTED);
     }    
