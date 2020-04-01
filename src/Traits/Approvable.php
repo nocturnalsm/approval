@@ -11,7 +11,6 @@ trait Approvable
     use PendingUpdate;
 
     private $approvable;
-
     
     public static function bootApprovable(): void
     {                          
@@ -86,6 +85,7 @@ trait Approvable
                     }
                 }
                 if ($checkState || $this->$statusField == $data["pendingState"]){                    
+                    $this->excludedFields = config('approval.status_field'); 
                     $this->pendingUpdate();      
                     $checkState = true;
                     if (isset($data['state'])){

@@ -31,6 +31,12 @@ class ApprovalServiceProvider extends ServiceProvider
             __DIR__.'/../Database/Migrations/create_approval_table.php.stub' => $this->getMigrationFileName($filesystem),
         ], 'migrations');
         $this->registerConfig();
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                Commands\CreatePolicy::class,
+                Commands\CreateApprover::class
+            ]);
+        }
     }
 
     /**
